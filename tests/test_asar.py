@@ -76,6 +76,17 @@ def test_pack_file_and_stream():
         assert reader.read(added2_path) == added2_text
 
 
+def test_pack_stream_overwrites_existing_file_path_entry():
+    overwritten_path = Path("overwrite.txt")
+    replacement_data = b"stream wins over file"
+    with AsarArchive(asar, mode="w") as writer:
+        writer.pack_file(overwritten_path, src / "f1.txt")
+        writer.pack_stream(overwritten_path, io.BytesIO(replacement_data))
+
+    with AsarArchive(asar, mode="r") as reader:
+        assert reader.read(overwritten_path) == replacement_data
+
+
 def test_pack_all():
     tmp_asar = Path("./tests/testdata.tmp.asar")
     f3, f4, f5, f6 = (
