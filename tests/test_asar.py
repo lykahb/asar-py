@@ -3,6 +3,7 @@ import json
 import struct
 import shutil
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from asar import create_archive, extract_archive, AsarArchive
 
@@ -122,3 +123,21 @@ def test_read_asar_without_integrity_field():
 
     with AsarArchive(broken_asar, mode="r") as archive:
         assert archive.read(Path("f1.txt")) == (src / "f1.txt").read_bytes()
+
+
+def test_pack_other_asar_handles_zero_length_file():
+    with TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        source_dir = root / "source"
+        source_dir.mkdir()
+        (source_dir / "empty.txt").write_bytes(b"")
+        source_asar = root / "source.asar"
+        copied_asar = root / "copied.asar"
+
+        create_archive(source_dir, source_asar)
+
+        with AsarArchive(source_asar, mode="r") as reader, AsarArchive(copied_asar, mode="w") as writer:
+            writer.pack_other_asar(reader)
+
+        with AsarArchive(copied_asar, mode="r") as archive:
+            assert archive.read(Path("empty.txt")) == b""
