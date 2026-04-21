@@ -1,4 +1,6 @@
 import io
+import json
+import struct
 import shutil
 from pathlib import Path
 
@@ -95,3 +97,28 @@ def test_pack_all():
     assert (dst / f4).read_bytes() == b"hello"
     assert (dst / f5).read_bytes() == b"test"
     assert (dst / f6).read_bytes() == (src / "assets" / "icon.png").read_bytes()
+
+
+def test_read_asar_without_integrity_field():
+    broken_asar = Path("./tests/testdata.no-integrity.asar")
+    create_archive(src, broken_asar)
+
+    with broken_asar.open("rb") as reader:
+        data_size, header_size, header_object_size, header_string_size = struct.unpack("<4I", reader.read(16))
+        header = json.loads(reader.read(header_string_size).decode("utf-8"))
+        payload = reader.read()
+
+    del header["files"]["f1.txt"]["integrity"]
+    header_json = json.dumps(header, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    aligned_size = (len(header_json) + data_size - 1) & ~(data_size - 1)
+    header_object_size = aligned_size + data_size
+    header_size = header_object_size + data_size
+
+    with broken_asar.open("wb") as writer:
+        writer.write(struct.pack("<4I", data_size, header_size, header_object_size, len(header_json)))
+        writer.write(header_json)
+        writer.write(b"\0" * (aligned_size - len(header_json)))
+        writer.write(payload)
+
+    with AsarArchive(broken_asar, mode="r") as archive:
+        assert archive.read(Path("f1.txt")) == (src / "f1.txt").read_bytes()

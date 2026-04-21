@@ -211,7 +211,7 @@ class AsarArchive:
             else:
                 node.unpacked = "unpacked" in child and bool(child["unpacked"])
                 node.type = Type.FILE
-                node.integrity = child["integrity"]
+                node.integrity = child.get("integrity")
                 node.size = child["size"]
                 if node.unpacked:
                     node.file_path = self.asar_unpacked / node.path
