@@ -3,6 +3,7 @@ Asar is a simple extensive archive format for Electron Archive, it works like ta
 together without compression, while having random access support.
 """
 
+import io
 import fnmatch
 import json
 import shutil
@@ -72,13 +73,20 @@ class AsarArchive:
 
     def pack_other_asar(self, other: "AsarArchive"):
         for meta in other.metas:
-            node = self._search_node_from_path(meta.path)
-            node.set_from_other(meta)
             if meta.type == Type.DIRECTORY:
+                node = self._search_node_from_path(meta.path)
+                node.set_dir(meta.unpacked)
                 continue
-            if meta.type == Type.FILE and not meta.unpacked:
-                node.offset = self._offset
-                self._offset += node.size
+            if meta.type == Type.LINK:
+                node = self._search_node_from_path(meta.path)
+                node.set_link(meta.link)
+                continue
+            if meta.type != Type.FILE:
+                continue
+            data = other.read(meta.path)
+            self.pack_stream(meta.path, io.BytesIO(data), should_unpack=meta.unpacked)
+            node = self._search_node_from_path(meta.path)
+            node.executable = meta.executable
 
     def pack(self, src: Path, unpack: str = None):
         """

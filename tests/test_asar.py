@@ -152,3 +152,20 @@ def test_pack_other_asar_handles_zero_length_file():
 
         with AsarArchive(copied_asar, mode="r") as archive:
             assert archive.read(Path("empty.txt")) == b""
+
+
+def test_pack_other_asar_can_overwrite_existing_file():
+    replaced = Path("f1.txt")
+    original_data = (src / "f1.txt").read_bytes()
+    replacement_data = b"replaced via pack_other_asar workflow"
+    new_asar = Path("./tests/testdata.overwrite.asar")
+
+    with AsarArchive(asar, mode="r") as reader, AsarArchive(new_asar, mode="w") as writer:
+        writer.pack_other_asar(reader)
+        writer.pack_stream(replaced, io.BytesIO(replacement_data))
+
+    with AsarArchive(new_asar, mode="r") as archive:
+        assert archive.read(replaced) == replacement_data
+        assert archive.read(Path("assets/icon.png")) == (src / "assets" / "icon.png").read_bytes()
+        assert archive.read(Path("f2.exe")) == (src / "f2.exe").read_bytes()
+        assert archive.read(Path("f1.txt")) != original_data
