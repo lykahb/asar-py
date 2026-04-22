@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from asar import create_archive, extract_archive, AsarArchive
+from asar.asar import align_int
 
 
 def _cmp_dir(d1: Path, d2: Path):
@@ -124,13 +125,14 @@ def test_read_asar_without_integrity_field():
     with broken_asar.open("rb") as reader:
         data_size, header_size, header_object_size, header_string_size = struct.unpack("<4I", reader.read(16))
         header = json.loads(reader.read(header_string_size).decode("utf-8"))
+        reader.seek(8 + header_size)
         payload = reader.read()
 
     del header["files"]["f1.txt"]["integrity"]
     header_json = json.dumps(header, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
-    aligned_size = (len(header_json) + data_size - 1) & ~(data_size - 1)
+    aligned_size = align_int(len(header_json), data_size)
     header_object_size = aligned_size + data_size
     header_size = header_object_size + data_size
 
