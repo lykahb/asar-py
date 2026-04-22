@@ -75,7 +75,10 @@ class AsarArchive:
         for meta in other.metas:
             if meta.type == Type.DIRECTORY:
                 node = self._search_node_from_path(meta.path)
-                node.set_dir(meta.unpacked)
+                if node.type == Type.DIRECTORY and node.files is not None:
+                    node.unpacked = meta.unpacked
+                else:
+                    node.set_dir(meta.unpacked)
                 continue
             if meta.type == Type.LINK:
                 node = self._search_node_from_path(meta.path)
@@ -232,6 +235,13 @@ class AsarArchive:
                     node.file_reader = LimitedReader(self._asar_io, self._offset + node.offset, node.size)
 
     def _write_to_asar(self):
+        current_offset = 0
+        for metadata in self.metas:
+            if metadata.type != Type.FILE or metadata.unpacked:
+                continue
+            metadata.offset = current_offset
+            current_offset += metadata.size
+
         header_json = json.dumps(
             self._header.to_dict(),
             sort_keys=True,
