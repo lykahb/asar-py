@@ -107,9 +107,7 @@ class AsarArchive:
             node = self._search_node_from_path(path_in)
             node.set_link(path.resolve().relative_to(src))
             if node.link.parts[0] == "..":
-                raise ValueError(
-                    f'${path_in}: file "{node.link}" links out of the package'
-                )
+                raise ValueError(f'${path_in}: file "{node.link}" links out of the package')
         elif path.is_dir():
             node = self._search_node_from_path(path_in)
             node.set_dir(unpacked=unpack and fnmatch.fnmatch(path.name, unpack))
@@ -122,9 +120,7 @@ class AsarArchive:
                 should_unpack=unpack and fnmatch.fnmatch(path.name, unpack),
             )
 
-    def pack_stream(
-        self, path_in: Path, file_reader: BinaryIO, should_unpack: bool = False
-    ):
+    def pack_stream(self, path_in: Path, file_reader: BinaryIO, should_unpack: bool = False):
         """
         Add one file stream to the asar archive.
         :param path_in: the path in asar archive.
@@ -233,9 +229,7 @@ class AsarArchive:
                     node.file_path = self.asar_unpacked / node.path
                 else:
                     node.offset = int(child["offset"])
-                    node.file_reader = LimitedReader(
-                        self._asar_io, self._offset + node.offset, node.size
-                    )
+                    node.file_reader = LimitedReader(self._asar_io, self._offset + node.offset, node.size)
 
     def _write_to_asar(self):
         header_json = json.dumps(
@@ -251,9 +245,7 @@ class AsarArchive:
         header_object_size = aligned_size + data_size
         header_size = header_object_size + data_size
         self._asar_io.write(
-            struct.pack(
-                "<4I", data_size, header_size, header_object_size, header_string_size
-            )
+            struct.pack("<4I", data_size, header_size, header_object_size, header_string_size)
         )
         self._asar_io.write(header_json)
         self._asar_io.write(b"\0" * (aligned_size - header_string_size))
